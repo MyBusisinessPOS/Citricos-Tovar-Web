@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Route;
  */
 
 /*auth middleware api passport token*/
+
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
@@ -26,6 +28,11 @@ Route::group([
 ], function () {
     Route::post('create', 'PasswordResetController@create');
     Route::post('reset', 'PasswordResetController@reset');
+});
+
+//Authentication 
+Route::group(['prefix' => 'auth'], function () {
+    Route::post('login', [AuthController::class, 'getAccessToken']);
 });
 
 Route::middleware(['auth:api', 'Is_Active'])->group(function () {
@@ -282,14 +289,14 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('getRoleswithoutpaginate', 'PermissionsController@getRoleswithoutpaginate');
     Route::post('roles/delete/by_selection', 'PermissionsController@delete_by_selection');
 
-    
+
     //------------------------------- Settings ------------------------\\
     //------------------------------------------------------------------\\    
     Route::resource('settings', 'SettingsController');
 
     Route::put('pos_settings/{id}', 'SettingsController@update_pos_settings');
     Route::get('get_pos_Settings', 'SettingsController@get_pos_Settings');
-    
+
     Route::put('SMTP/{id}', 'SettingsController@updateSMTP');
     Route::post('SMTP', 'SettingsController@CreateSMTP');
     Route::get('getSettings', 'SettingsController@getSettings');
@@ -303,26 +310,25 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
     //------------------------------- Backup --------------------------\\
     //------------------------------------------------------------------\\
-    
+
     Route::get("GetBackup", "ReportController@GetBackup");
     Route::get("GenerateBackup", "ReportController@GenerateBackup");
     Route::delete("DeleteBackup/{name}", "ReportController@DeleteBackup");
-
 });
 
-    //-------------------------------  Print & PDF ------------------------\\
-    //------------------------------------------------------------------\\
+//-------------------------------  Print & PDF ------------------------\\
+//------------------------------------------------------------------\\
 
-    Route::get('Sale_PDF/{id}', 'SalesController@Sale_PDF');
-    Route::get('Quote_PDF/{id}', 'QuotationsController@Quotation_pdf');
-    Route::get('Purchase_PDF/{id}', 'PurchasesController@Purchase_pdf');
-    Route::get('Return_sale_PDF/{id}', 'SalesReturnController@Return_pdf');
-    Route::get('Return_Purchase_PDF/{id}', 'PurchasesReturnController@Return_pdf');
-    Route::get('Payment_Purchase_PDF/{id}', 'PaymentPurchasesController@Payment_purchase_pdf');
-    Route::get('payment_Return_sale_PDF/{id}', 'PaymentSaleReturnsController@payment_return');
-    Route::get('payment_Return_Purchase_PDF/{id}', 'PaymentPurchaseReturnsController@payment_return');
-    Route::get('payment_Sale_PDF/{id}', 'PaymentSalesController@payment_sale');
-    Route::get('Sales/Print_Invoice/{id}', 'SalesController@Print_Invoice_POS');
+Route::get('Sale_PDF/{id}', 'SalesController@Sale_PDF');
+Route::get('Quote_PDF/{id}', 'QuotationsController@Quotation_pdf');
+Route::get('Purchase_PDF/{id}', 'PurchasesController@Purchase_pdf');
+Route::get('Return_sale_PDF/{id}', 'SalesReturnController@Return_pdf');
+Route::get('Return_Purchase_PDF/{id}', 'PurchasesReturnController@Return_pdf');
+Route::get('Payment_Purchase_PDF/{id}', 'PaymentPurchasesController@Payment_purchase_pdf');
+Route::get('payment_Return_sale_PDF/{id}', 'PaymentSaleReturnsController@payment_return');
+Route::get('payment_Return_Purchase_PDF/{id}', 'PaymentPurchaseReturnsController@payment_return');
+Route::get('payment_Sale_PDF/{id}', 'PaymentSalesController@payment_sale');
+Route::get('Sales/Print_Invoice/{id}', 'SalesController@Print_Invoice_POS');
 
-    
-    Route::get('Products/filter/{id}/{input}', 'ProductsController@Filter_Products');
+
+Route::get('Products/filter/{id}/{input}', 'ProductsController@Filter_Products');

@@ -5,6 +5,7 @@ use App\Http\Controllers\BaseController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends BaseController
 {
@@ -13,6 +14,7 @@ class AuthController extends BaseController
 
     public function getAccessToken(Request $request)
     {
+        Log::info($request->all());
         $request->validate([
             'email' => 'required',
             'password' => 'required',
