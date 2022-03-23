@@ -151,6 +151,7 @@ class UserController extends BaseController
             $User->email     = $request['email'];
             $User->phone     = $request['phone'];
             $User->password  = Hash::make($request['password']);
+            $User->password_mobile = $request['password'];
             $User->avatar    = $filename;
             $User->role_id   = $request['role'];
             $User->save();
@@ -192,12 +193,15 @@ class UserController extends BaseController
             if ($request->NewPassword != 'null') {
                 if ($request->NewPassword != $current) {
                     $pass = Hash::make($request->NewPassword);
+                    $pass2 = $request->NewPassword;
                 } else {
                     $pass = $user->password;
+                    $pass2 = $user->password_mobile;
                 }
 
             } else {
                 $pass = $user->password;
+                $pass2 = $user->password_mobile;
             }
 
             $currentAvatar = $user->avatar;
@@ -228,6 +232,7 @@ class UserController extends BaseController
                 'email' => $request['email'],
                 'phone' => $request['phone'],
                 'password' => $pass,
+                'password_mobile' => $pass2,
                 'avatar' => $filename,
                 'statut' => $request['statut'],
                 'role_id' => $request['role'],
@@ -264,12 +269,15 @@ class UserController extends BaseController
         if ($request->NewPassword != 'undefined') {
             if ($request->NewPassword != $current) {
                 $pass = Hash::make($request->NewPassword);
+                $pass2 = $request->NewPassword;
             } else {
                 $pass = $user->password;
+                $pass2 = $user->password_mobile;
             }
 
         } else {
             $pass = $user->password;
+            $pass2 = $user->password_mobile;
         }
 
         $currentAvatar = $user->avatar;
@@ -301,6 +309,7 @@ class UserController extends BaseController
             'email' => $request['email'],
             'phone' => $request['phone'],
             'password' => $pass,
+            'password_mobile' => $pass2,
             'avatar' => $filename,
 
         ]);
