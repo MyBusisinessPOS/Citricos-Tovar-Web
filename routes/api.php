@@ -30,6 +30,7 @@ Route::group([
     Route::post('reset', 'PasswordResetController@reset');
 });
 
+//Authentication 
 Route::group(['prefix' => 'auth'], function () {
     Route::post('login', [AuthController::class, 'getAccessToken']);
 });
