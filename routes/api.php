@@ -35,7 +35,12 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('login', [AuthController::class, 'getAccessToken']);
 });
 
-Route::middleware(['auth:api', 'Is_Active'])->group(function () {
+//Collections Mobil
+Route::resource('provider', 'API\ProviderAPIController');
+
+
+
+Route::middleware(['auth:api', 'Is_Active'])->group(function () {    
 
     //-------------------------- Clear Cache ---------------------------
 
