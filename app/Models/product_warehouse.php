@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class product_warehouse extends Model
 {
+    use SoftDeletes;
     protected $table = 'product_warehouse';
 
     protected $fillable = [

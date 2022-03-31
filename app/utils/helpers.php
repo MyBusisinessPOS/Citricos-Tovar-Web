@@ -1,4 +1,5 @@
 <?php
+
 namespace App\utils;
 
 use App\Models\Currency;
@@ -22,12 +23,14 @@ class helpers
 
         foreach ($fields as $field) {
             $model->where(function ($query) use ($request, $field, $model) {
-                return $model->when($request->filled($field['value']),
+                return $model->when(
+                    $request->filled($field['value']),
                     function ($query) use ($request, $model, $field) {
                         $field['param'] = 'like' ?
-                        $model->where($field['value'], 'like', "{$request[$field['value']]}")
-                        : $model->where($field['value'], $request[$field['value']]);
-                    });
+                            $model->where($field['value'], 'like', "{$request[$field['value']]}")
+                            : $model->where($field['value'], $request[$field['value']]);
+                    }
+                );
             });
         }
 
@@ -55,7 +58,8 @@ class helpers
         if ($settings && $settings->currency_id) {
             if (Currency::where('id', $settings->currency_id)
                 ->where('deleted_at', '=', null)
-                ->first()) {
+                ->first()
+            ) {
                 $symbol = $settings['Currency']->symbol;
             } else {
                 $symbol = '';
@@ -74,7 +78,8 @@ class helpers
         if ($settings && $settings->currency_id) {
             if (Currency::where('id', $settings->currency_id)
                 ->where('deleted_at', '=', null)
-                ->first()) {
+                ->first()
+            ) {
                 $code = $settings['Currency']->code;
             } else {
                 $code = 'usd';
@@ -120,4 +125,10 @@ class helpers
         return $res;
     }
 
+    public function getExtensionFromBase64($avatar)
+    {
+        $image_info = getimagesize($avatar);
+        $extension = (isset($image_info["mime"]) ? explode('/', $image_info["mime"])[1] : "");
+        return $extension;
+    }
 }

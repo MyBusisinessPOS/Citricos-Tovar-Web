@@ -26,7 +26,7 @@ class ProviderAPIController extends Controller
                     ->orWhere('phone', 'LIKE',  request('search') . '%')
                     ->orWhere('email', 'LIKE',  request('search') . '%');
             })
-            ->paginate(request('perPage'));
+            ->paginate(request('limit'));
         return $this->sendResponse($providers, 'Providers retrieved successfully');
     }
 
@@ -56,6 +56,7 @@ class ProviderAPIController extends Controller
         if (empty($provider)) {
             return $this->sendError('Provider not found', 404);
         }
+        return $this->sendResponse($provider, 'Provider retrieved successfully');
     }
 
     /**

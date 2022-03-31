@@ -37,6 +37,7 @@ Route::group(['prefix' => 'auth'], function () {
 
 //Collections Mobil
 Route::resource('provider', 'API\ProviderAPIController');
+Route::resource('product', 'API\ProductAPIController');
 
 
 
