@@ -102,7 +102,7 @@ class ProviderAPIController extends Controller
     private function getNumberOrder()
     {
 
-        $last = Provider::latest()->first();;
+        $last = Provider::latest('id')->first();;
 
         if ($last) {
             $code = $last->code + 1;

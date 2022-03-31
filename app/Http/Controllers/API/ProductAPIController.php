@@ -146,12 +146,14 @@ class ProductAPIController extends Controller
      */
     public function update(UpdateProductRequest $request, $id)
     {
+        $product = Product::find($id);
+        if (empty($product)) {
+            return $this->sendError('Product not found', 404);
+        }
+
         DB::beginTransaction();
         try {
-            $product = Product::find($id);
-            if (empty($product)) {
-                return $this->sendError('Product not found', 404);
-            }
+
             $input = $request->all();
 
             // Store Variants Product
@@ -351,7 +353,7 @@ class ProductAPIController extends Controller
             ProductVariant::where('product_id', $id)->delete();
 
             DB::commit();
-            
+
             return $this->sendResponse($product, 'Product deleted successfully');
         } catch (Exception $ex) {
             DB::rollBack();

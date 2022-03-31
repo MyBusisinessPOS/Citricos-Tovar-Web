@@ -35,9 +35,15 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('login', [AuthController::class, 'getAccessToken']);
 });
 
-//Collections Mobil
+//Collections Mobile
 Route::resource('provider', 'API\ProviderAPIController');
 Route::resource('product', 'API\ProductAPIController');
+Route::resource('categorie', 'API\CategorieAPIController');
+Route::resource('warehouse', 'API\WareHouseAPIController');
+Route::resource('expenseCategory', 'API\ExpenseCategoryAPIController');
+Route::resource('expense', 'API\ExpenseAPIController');
+Route::resource('user', 'API\UserAPIController');
+Route::resource('client', 'API\CustomerAPIController');
 
 
 
