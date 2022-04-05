@@ -44,6 +44,8 @@ Route::resource('expenseCategory', 'API\ExpenseCategoryAPIController');
 Route::resource('expense', 'API\ExpenseAPIController');
 Route::resource('user', 'API\UserAPIController');
 Route::resource('client', 'API\CustomerAPIController');
+Route::resource('purchase', 'API\PurchaseAPIController');
+Route::resource('sale', 'API\SaleAPIController');
 
 
 
