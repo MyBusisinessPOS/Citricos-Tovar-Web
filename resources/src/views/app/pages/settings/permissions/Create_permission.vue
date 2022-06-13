@@ -560,6 +560,86 @@
                   </b-card>
                 </b-col>
 
+                 <!--  Incomes -->
+                <b-col md="4">
+                  <b-card no-body class="ul-card__border-radius">
+                    <b-card-header header-tag="header" class="p-1" role="tab">
+                      <b-button
+                        class="card-title mb-0"
+                        block
+                        href="#"
+                        v-b-toggle.panel-Income
+                        variant="transparent"
+                      >{{$t('Incomes')}}</b-button>
+                    </b-card-header>
+                    <b-collapse
+                      id="panel-Income"
+                      :visible="true"
+                      accordion="my-accordion6"
+                      role="tabpanel"
+                    >
+                      <b-card-body>
+                        <b-card-text>
+                          <b-row>
+                            <!--Income View -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="income_view"
+                                >
+                                <span>{{$t('View')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <!--Income ADD -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="income_add"
+                                >
+                                <span>{{$t('Add')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <!--Income Edit -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="income_edit"
+                                >
+                                <span>{{$t('Edit')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                            <!--Income Delete -->
+                            <b-col md="6">
+                              <label class="checkbox checkbox-outline-primary">
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  v-model="permissions"
+                                  value="income_delete"
+                                >
+                                <span>{{$t('Del')}}</span>
+                                <span class="checkmark"></span>
+                              </label>
+                            </b-col>
+                          </b-row>
+                        </b-card-text>
+                      </b-card-body>
+                    </b-collapse>
+                  </b-card>
+                </b-col>
+
                 <!-- Sales -->
                 <b-col md="4">
                   <b-card no-body class="ul-card__border-radius">
