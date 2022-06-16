@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CreateExpenseRequest;
-use App\Http\Requests\UpdateExpenseRequest;
-use App\Models\Expense;
+use App\Models\Income;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ExpenseAPIController extends Controller
+class IncomeAPIController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -20,7 +18,7 @@ class ExpenseAPIController extends Controller
      */
     public function index(Request $request)
     {
-        $expenses = Expense::with('expense_category', 'warehouse')
+        $incomes = Income::with('income_category', 'warehouse')
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('user_id'), function ($query) use ($request) {
                     return $query->where('user_id', $request->user_id);
@@ -31,7 +29,7 @@ class ExpenseAPIController extends Controller
                         ->orWhere('date', 'LIKE', $request->search . "%")
                         ->orWhere('details', 'LIKE', $request->search . "%")
                         ->orWhere(function ($query) use ($request) {
-                            return $query->whereHas('expense_category', function ($q) use ($request) {
+                            return $query->whereHas('income_category', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', $request->search . "%");
                             });
                         })
@@ -42,8 +40,10 @@ class ExpenseAPIController extends Controller
                         });
                 });
             })->paginate($request->limit ?? 10);
-        return $this->sendResponse($expenses, 'Expense retrieved successfully');
+        return $this->sendResponse($incomes, 'Incomes retrieved successfully');
     }
+
+
 
     /**
      * Store a newly created resource in storage.
@@ -53,16 +53,15 @@ class ExpenseAPIController extends Controller
      */
     public function store(Request $request)
     {
-
-        if (isset($request->expenses)) {
+        if (isset($request->incomes)) {
 
             $insert = [];
-            collect($request->expenses)->each(function ($item) use (&$insert) {
+            collect($request->incomes)->each(function ($item) use (&$insert) {
                 $insert[] = [
                     'date' => $item['date'],
                     'Ref' => !empty($item['ref']) ? $item['ref'] : $this->getNumberOrder(),
                     'user_id' => $item['userId'],
-                    'expense_category_id' => $item['expenseCategoryId'],
+                    'income_category_id' => $item['incomeCategoryId'],
                     'warehouse_id' => $item['warehouseId'],
                     'details' => $item['details'],
                     'amount' => $item['amount'],
@@ -73,52 +72,61 @@ class ExpenseAPIController extends Controller
 
             try {
                 DB::beginTransaction();
-                $expense = Expense::insert($insert);
+                $income = Income::insert($insert);
                 DB::commit();
-                return $this->sendResponse($expense, 'Expense saved successfully');
+                return $this->sendResponse($income, 'Income saved successfully');
             } catch (Exception $ex) {
                 DB::rollBack();
                 return $this->sendError($ex->getMessage());
             }
         } else {
-            return $this->sendError('The expense attribute does not exist');
+            return $this->sendError('The incomes attribute does not exist');
         }
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  \App\Models\Income  $income
      * @return \Illuminate\Http\Response
      */
     public function show($id)
     {
-        $expense = Expense::find($id);
-        if (empty($expense)) {
-            return $this->sendError('Expense not found', 404);
+        $income = Income::find($id);
+        if (empty($income)) {
+            return $this->sendError('Income not found', 404);
         }
-        return $this->sendResponse($expense, 'Expense retrieved successfully');
+        return $this->sendResponse($income, 'Income retrieved successfully');
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  \App\Models\Income  $income
      * @return \Illuminate\Http\Response
      */
-    public function update(UpdateExpenseRequest $request, $id)
+    public function update(Request $request, $id)
     {
-        $expense = Expense::find($id);
-        if (empty($expense)) {
-            return $this->sendError('Expense not found', 404);
+        request()->validate([
+            'income.date' => 'required',
+            'income.warehouse_id' => 'required',
+            'income.income_category_id' => 'required',
+            'income.details' => 'required',
+            'income.amount' => 'required',
+            'income.user_id' => 'required',
+        ]);
+
+        $income = Income::find($id);
+        if (empty($income)) {
+            return $this->sendError('Income not found', 404);
         }
 
         try {
 
             $input = $request->all();
-            $expense->update($input);
-            return $this->sendResponse($expense, 'Expense updated successfully');
+            $income->update($input);
+            return $this->sendResponse($income, 'Income updated successfully');
         } catch (Exception $ex) {
             DB::rollBack();
             return $this->sendError($ex->getMessage());
@@ -128,23 +136,23 @@ class ExpenseAPIController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  \App\Models\Income  $income
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
-        $expense = Expense::find($id);
-        if (empty($expense)) {
-            return $this->sendError('Expense not found', 404);
+        $income = Income::find($id);
+        if (empty($income)) {
+            return $this->sendError('Income not found', 404);
         }
-        $expense->delete();
-        return $this->sendResponse($expense, 'Expense deleted successfully');
+        $income->delete();
+        return $this->sendResponse($income, 'Income deleted successfully');
     }
 
     private function getNumberOrder()
     {
 
-        $last = Expense::latest('id')->first();
+        $last = Income::latest('id')->first();
 
         if ($last) {
             $item = $last->Ref;
@@ -152,7 +160,7 @@ class ExpenseAPIController extends Controller
             $inMsg = $nwMsg[1] + 1;
             $code = $nwMsg[0] . '_' . $inMsg;
         } else {
-            $code = 'EXP_1111';
+            $code = 'INC_1111';
         }
         return $code;
     }

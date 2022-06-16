@@ -19,7 +19,7 @@ class CreateIncomesTable extends Migration
 			$table->date('date');
 			$table->string('Ref', 192);
 			$table->integer('user_id')->index('income_user_id');
-			$table->integer('expense_category_id')->index('income_category_id');
+			$table->integer('income_category_id')->index('income_category_id');
 			$table->integer('warehouse_id')->index('income_warehouse_id');
 			$table->string('details', 192);
 			$table->float('amount', 18, 2);
