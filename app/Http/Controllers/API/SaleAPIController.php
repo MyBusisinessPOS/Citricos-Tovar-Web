@@ -19,6 +19,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SaleAPIController extends Controller
 {
@@ -57,109 +58,114 @@ class SaleAPIController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(CreateSaleRequest $request)
+    public function store(Request $request)
     {
-        DB::beginTransaction();
-        try {
 
-            $input = $request->all();
+        if (isset($request->sales)) {
+
+            $insert = [];
             $helpers = new helpers();
+            try {
+                DB::beginTransaction();
 
-            $input['Ref'] = $this->getNumberOrder();
-            $input['payment_statut'] = 'unpaid';
-            // $input['date'] = Carbon::now();
-            $input['is_pos'] = 0;
-            $sale = Sale::create($input);
+                collect($request->sales)->each(function ($item) use (&$insert, $helpers) {
+                    $input['user_id'] = $item['user_id'];
+                    $input['date'] = $item['date'];
+                    $input['Ref'] = $item['Ref'];
+                    $input['is_pos'] = 0;
+                    $input['client_id'] = $item['client_id'];
+                    $input['warehouse_id'] = $item['warehouse_id'];
+                    $input['tax_rate'] = $item['tax_rate'];
+                    $input['TaxNet'] = $item['TaxNet'];
+                    $input['discount'] = $item['discount'];
+                    $input['shipping'] = $item['shipping'];
+                    $input['GrandTotal'] = $item['GrandTotal'];
+                    $input['paid_amount'] = $item['payment_one'];
+                    $input['payment_statut'] = $item['payment_statut'];
+                    $input['statut'] = $item['statut'];
+                    $input['notes'] = $item['notes'];
+                    $input['type_sale'] = $item['type_sale'] ?? null;
 
-            $data = $request['details'];
-            foreach ($data as $key => $value) {
-                $unit = Unit::find($value['sale_unit_id']);
-                $orderDetails[] = [
-                    'date' => $input['date'],
-                    'sale_id' => $sale->id,
-                    'sale_unit_id' =>  $value['sale_unit_id'],
-                    'quantity' => $value['quantity'],
-                    'price' => $value['Unit_price'],
-                    'TaxNet' => $value['tax_percent'],
-                    'tax_method' => $value['tax_method'],
-                    'discount' => $value['discount'],
-                    'discount_method' => $value['discount_Method'],
-                    'product_id' => $value['product_id'],
-                    'product_variant_id' => $value['product_variant_id'],
-                    'total' => $value['subtotal'],
-                ];
+                    $sale = Sale::create($input);
+                    
+                    collect($item['details'])->each(function ($row) use (&$insert, $sale) {
+                        $insert[] = [
+                            'date' => $row['date'],
+                            'sale_id' => $sale->id,
+                            'product_id' => $row['product_id'],
+                            'product_variant_id' => $row['product_variant_id'] ?? null,
+                            'price' => $row['price'],
+                            'sale_unit_id' => 1,
+                            'TaxNet' => $row['TaxNet'],
+                            'tax_method' => 1,
+                            'discount' => $row['discount'],
+                            'discount_method' => 2,
+                            'total' => $row['total'],
+                            'quantity' => $row['quantity'],
+                            'box' => $row['box'],
+                            'weight' => $row['weight'],
+                            'created_at' => Carbon::now(),
+                            'updated_at' => Carbon::now(),
+                        ];
 
-                if ($sale->statut == "completed") {
-                    if ($value['product_variant_id'] !== null) {
-                        $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->where('product_variant_id', $value['product_variant_id'])
-                            ->first();
 
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
+                        if ($sale->statut == "completed") {
+                            $unit = Unit::find(1); //
+                            if ($row['product_variant_id'] !== null) {
+                                $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
+                                    ->where('product_id', $row['product_id'])
+                                    ->where('product_variant_id', $row['product_variant_id'])
+                                    ->first();
+
+                                if ($unit && $product_warehouse) {
+                                    if ($unit->operator == '/') {
+                                        $product_warehouse->qte -= $row['quantity'] / $unit->operator_value;
+                                    } else {
+                                        $product_warehouse->qte -= $row['quantity'] * $unit->operator_value;
+                                    }
+                                    $product_warehouse->save();
+                                }
                             } else {
-                                $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
-                            }
-                            $product_warehouse->save();
-                        }
-                    } else {
-                        $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->first();
+                                $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
+                                    ->where('product_id', $row['product_id'])
+                                    ->first();
 
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
+                                if ($unit && $product_warehouse) {
+                                    if ($unit->operator == '/') {
+                                        $product_warehouse->qte -= $row['quantity'] / $unit->operator_value;
+                                    } else {
+                                        $product_warehouse->qte -= $row['quantity'] * $unit->operator_value;
+                                    }
+                                    $product_warehouse->save();
+                                }
                             }
-                            $product_warehouse->save();
                         }
+                    });
+
+                    //Payment
+                    if ($sale->payment_statut == 'paid') {
+                        PaymentSale::create([
+                            'user_id' =>  $item['user_id'],
+                            'date' => Carbon::now(),
+                            'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
+                            'sale_id' => $sale->id,
+                            'montant' => $item['payment_one'],                            
+                            'change' => 0,
+                            'Reglement' => $item['payment_method_one'],                            
+                        ]);
                     }
-                }
+                });
+
+                SaleDetail::insert($insert);
+
+                DB::commit();
+                return $this->sendResponse($insert, 'Sales saved successfully');
+            } catch (Exception $ex) {
+                DB::rollBack();
+                return $this->sendError($ex->getMessage());
             }
-
-            SaleDetail::insert($orderDetails);
-
-            // $sale = Sale::find($order->id);
-
-            $total_paid = $sale->paid_amount + $request['amount'];
-            $due = $sale->GrandTotal - $total_paid;
-            if ($due === 0.0 || $due < 0.0) {
-                $payment_statut = 'paid';
-            } else if ($due != $sale->GrandTotal) {
-                $payment_statut = 'partial';
-            } else if ($due == $sale->GrandTotal) {
-                $payment_statut = 'unpaid';
-            }
-
-            if ($request['amount'] > 0) {
-                if ($request->payment['Reglement'] == 'credit card') {
-                } else {
-                    PaymentSale::create([
-                        'sale_id' => $sale->id,
-                        'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                        'date' => Carbon::now(),
-                        'Reglement' => $request->payment['Reglement'],
-                        'montant' => $request['amount'],
-                        'change' => $request['change'],
-                        'user_id' => $request->user_id,
-                    ]);
-
-                    $sale->update([
-                        'paid_amount' => $total_paid,
-                        'payment_statut' => $payment_statut,
-                    ]);
-                }
-            }
-
-            DB::commit();
-            return $this->sendResponse($sale, 'Sale saved successfully');
-        } catch (Exception $ex) {
-            DB::rollBack();
-            return $this->sendError($ex->getMessage());
+        } else {
+            return $this->sendError('The sales attribute does not exist');
         }
     }
 

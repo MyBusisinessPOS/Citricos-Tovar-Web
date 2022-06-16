@@ -8,7 +8,9 @@ use App\Http\Requests\UpdateProviderRequest;
 use App\Models\Provider;
 use App\utils\helpers;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProviderAPIController extends Controller
 {
@@ -36,12 +38,42 @@ class ProviderAPIController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(CreateProviderRequest $request)
+    public function store(Request $request)
     {
-        $input = $request->all();
-        $input['code'] = $this->getNumberOrder();
-        $provider = Provider::create($input);
-        return $this->sendResponse($provider, 'Provider saved successfully');
+        if (isset($request->providers)) {
+
+            $insert = [];
+            collect($request->providers)->each(function ($item) use (&$insert) {
+                $insert[] = [
+                    'account_number' => $item['account_number'],
+                    'provider' => $item['provider'],
+                    'name' => $item['name'],
+                    'code' => (!empty($item['code']) && $item['code'] != 0) ? $item['code'] : $this->getNumberOrder(),
+                    'email' => $item['email'],
+                    'rfc' => $item['rfc'],
+                    'use_cfdi' => $item['use_cfdi'],
+                    'phone' => $item['phone'],
+                    'country' => $item['country'],
+                    'city' => $item['city'],                   
+                    'adresse' => $item['adresse'],
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ];
+            });
+
+            try {
+                DB::beginTransaction();
+                $provider = Provider::insert($insert);
+                DB::commit();
+                return $this->sendResponse($provider, 'Provider saved successfully');
+            } catch (Exception $ex) {
+                DB::rollBack();
+                return $this->sendError($ex->getMessage());
+            }
+        } else {
+            return $this->sendError('The providers attribute does not exist');
+        }
+
     }
 
     /**
@@ -101,15 +133,8 @@ class ProviderAPIController extends Controller
      */
     private function getNumberOrder()
     {
-
-        $last = Provider::latest('id')->first();;
-
-        if ($last) {
-            $code = $last->code + 1;
-        } else {
-            $code = 1;
-        }
-        return $code;
+        $last = Provider::latest('id')->first();
+        return ($last) ? $last->code + 1 : 1;
     }
 
 }
