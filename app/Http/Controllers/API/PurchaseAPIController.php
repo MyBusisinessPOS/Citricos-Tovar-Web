@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Exports\PurchasesWeekly;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreatePruchaseRequest;
 use App\Http\Requests\UpdatePruchaseRequest;
+use App\Mail\PurchaseWeekly;
+use App\Models\Expense;
 use App\Models\PaymentPurchase;
 use App\Models\Product;
 use App\Models\product_warehouse;
@@ -15,6 +18,9 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PurchaseAPIController extends Controller
 {
@@ -62,6 +68,7 @@ class PurchaseAPIController extends Controller
             try {
                 DB::beginTransaction();
                 collect($request->purchases)->each(function ($item) use (&$insert) {
+                    Log::info($item);
 
                     $input['user_id'] = $item['user_id'];
                     $input['Ref'] = !empty($item['Ref']) ? $item['Ref'] : $this->getNumberOrder();
@@ -74,9 +81,9 @@ class PurchaseAPIController extends Controller
                     $input['shipping'] = $item['shipping'];
                     $input['GrandTotal'] = $item['GrandTotal'];
                     $input['paid_amount'] = $item['payment_one'];
-                    $input['statut'] = $item['statut'];
-                    $input['payment_statut'] = $item['payment_statut'];
-                    $input['notes'] = $item['notes'];
+                    $input['statut'] = $item['statut'] ?? 'completed';
+                    $input['payment_statut'] = $item['payment_statut'] ?? 'paid';
+                    $input['notes'] = $item['notes'] ?? null;
                     $input['created_at'] = Carbon::now();
                     $input['updated_at'] = Carbon::now();
 
@@ -417,6 +424,46 @@ class PurchaseAPIController extends Controller
             DB::rollBack();
             return $this->sendError($ex->getMessage());
         }
+    }
+
+    public function generateReport (Request $request) {
+        
+        $from = isset($request->from) ? $request->from : Carbon::now()->firstOfMonth()->format('Y-m-d');
+        $to = isset($request->to) ? $request->to : Carbon::now()->endOfMonth()->format('Y-m-d'); 
+
+        $purchases = Purchase::join('purchase_details', 'purchases.id', '=', 'purchase_details.purchase_id')
+        ->join('products', 'purchase_details.product_id', '=', 'products.id')
+        ->join('providers', 'purchases.provider_id', '=', 'providers.id')
+        ->selectRaw('providers.name as provider, products.name as product, sum(purchase_details.quantity) as quantity, sum(purchases.GrandTotal) as total')
+        ->whereBetween('purchases.date', [$from, $to])
+        ->groupBy('purchases.provider_id')
+        ->groupBy('products.name')
+        ->get();
+
+        $providers = [];
+        $totales = [];
+        foreach ($purchases as $key => $item) {
+            $providers[$item['provider']][] = $item;
+        }
+        $from = Carbon::parse($from)->startOfDay();
+        $to = Carbon::parse($to)->endOfDay();
+        $totales = collect($purchases)->groupBy('product')->map(function ($item) use ($from, $to) {
+            return [
+                'product' => $item->first()->product,
+                'quantity' => $item->sum('quantity'),
+                'total' => $item->sum('total'),
+                'gas' => Expense::where('expense_category_id', 2)->whereBetween('created_at', [$from, $to])->sum('amount'), //Combustible,
+                'payroll' => Expense::where('expense_category_id', 3)->whereBetween('created_at', [$from, $to])->sum('amount'), //Nomina,
+                'bills' => Expense::whereNotIn('expense_category_id', [2, 3])->whereBetween('created_at', [$from, $to])->sum('amount'), //Gastos,
+            ];
+        });
+        $name = "/public/exports/Reporte-Compras-" . Carbon::parse($from)->format('Y-m-d') . "-" . Carbon::parse($to)->format('Y-m-d') . ".xlsx";   
+        Excel::store(new PurchasesWeekly($providers, $totales, $from, $to), $name);
+        return [
+            'success' => true,
+            'url' => asset("storage/exports/Reporte-Compras-" . Carbon::parse($from)->format('Y-m-d') . "-" . Carbon::parse($to)->format('Y-m-d') . ".xlsx"),
+            'message' => 'Purchase Report successfully generated',
+        ];        
     }
 
     public function getNumberOrder()

@@ -44,21 +44,38 @@ class ProviderAPIController extends Controller
 
             $insert = [];
             collect($request->providers)->each(function ($item) use (&$insert) {
-                $insert[] = [
-                    'account_number' => $item['account_number'],
-                    'provider' => $item['provider'],
-                    'name' => $item['name'],
-                    'code' => (!empty($item['code']) && $item['code'] != 0) ? $item['code'] : $this->getNumberOrder(),
-                    'email' => $item['email'],
-                    'rfc' => $item['rfc'],
-                    'use_cfdi' => $item['use_cfdi'],
-                    'phone' => $item['phone'],
-                    'country' => $item['country'],
-                    'city' => $item['city'],                   
-                    'adresse' => $item['adresse'],
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ];
+
+                $provider = Provider::where('provider', $item['provider'])->first();
+                if (!empty($provider)) {
+                    $provider->account_number = $item['account_number'];
+                    $provider->provider = $item['provider'];
+                    $provider->name = $item['name'];
+                    $provider->code = $item['code'] ?? $provider->code;
+                    $provider->email = $item['email'];
+                    $provider->rfc = $item['rfc'];
+                    $provider->use_cfdi = $item['use_cfdi'];
+                    $provider->phone = $item['phone'];
+                    $provider->country = $item['country'];
+                    $provider->city = $item['city'];
+                    $provider->adresse = $item['adresse'];
+                    $provider->save();
+                } else {
+                    $insert[] = [
+                        'account_number' => $item['account_number'],
+                        'provider' => $item['provider'],
+                        'name' => $item['name'],
+                        'code' => (!empty($item['code']) && $item['code'] != 0) ? $item['code'] : $this->getNumberOrder(),
+                        'email' => $item['email'],
+                        'rfc' => $item['rfc'],
+                        'use_cfdi' => $item['use_cfdi'],
+                        'phone' => $item['phone'],
+                        'country' => $item['country'],
+                        'city' => $item['city'],
+                        'adresse' => $item['adresse'],
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ];
+                }
             });
 
             try {
@@ -73,7 +90,6 @@ class ProviderAPIController extends Controller
         } else {
             return $this->sendError('The providers attribute does not exist');
         }
-
     }
 
     /**
@@ -136,5 +152,4 @@ class ProviderAPIController extends Controller
         $last = Provider::latest('id')->first();
         return ($last) ? $last->code + 1 : 1;
     }
-
 }

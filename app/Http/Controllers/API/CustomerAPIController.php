@@ -45,21 +45,38 @@ class CustomerAPIController extends Controller
 
             $insert = [];
             collect($request->clients)->each(function ($item) use (&$insert) {
-                $insert[] = [
-                    'account_number' => $item['account_number'],
-                    'client' => $item['client'],
-                    'name' => $item['name'],
-                    'code' => (!empty($item['code']) && $item['code'] != 0) ? $item['code'] : $this->getNumberOrder(),
-                    'email' => $item['email'],
-                    'rfc' => $item['rfc'],
-                    'use_cfdi' => $item['use_cfdi'],
-                    'country' => $item['country'],
-                    'city' => $item['city'],
-                    'phone' => $item['phone'],
-                    'adresse' => $item['adresse'],
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ];
+
+                $client = Client::where('cliente', $item['cliente'])->first();
+                if (!empty($exists)) {
+                    $client->account_number = $item['account_number'];
+                    $client->name = $item['name'];
+                    $client->code = $item['code'] ?? $client->code; 
+                    $client->email = $item['email'];
+                    $client->rfc = $item['rfc'];
+                    $client->use_cfdi = $item['use_cfdi'];
+                    $client->country = $item['country'];
+                    $client->city = $item['city'];
+                    $client->phone = $item['phone'];
+                    $client->adresse = $item['adresse'];
+                    $client->save();                    
+                } else {
+
+                    $insert[] = [
+                        'account_number' => $item['account_number'],
+                        'client' => $item['client'],
+                        'name' => $item['name'],
+                        'code' => (!empty($item['code']) && $item['code'] != 0) ? $item['code'] : $this->getNumberOrder(),
+                        'email' => $item['email'],
+                        'rfc' => $item['rfc'],
+                        'use_cfdi' => $item['use_cfdi'],
+                        'country' => $item['country'],
+                        'city' => $item['city'],
+                        'phone' => $item['phone'],
+                        'adresse' => $item['adresse'],
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ];
+                }
             });
 
             try {

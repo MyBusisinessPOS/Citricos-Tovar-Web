@@ -81,9 +81,9 @@ class SaleAPIController extends Controller
                     $input['shipping'] = $item['shipping'];
                     $input['GrandTotal'] = $item['GrandTotal'];
                     $input['paid_amount'] = $item['payment_one'];
-                    $input['payment_statut'] = $item['payment_statut'];
-                    $input['statut'] = $item['statut'];
-                    $input['notes'] = $item['notes'];
+                    $input['payment_statut'] = $item['payment_statut'] ?? 'paid';
+                    $input['statut'] = $item['statut'] ?? 'completed';
+                    $input['notes'] = $item['notes'] ?? null;
                     $input['type_sale'] = $item['type_sale'] ?? null;
 
                     $sale = Sale::create($input);

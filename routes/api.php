@@ -44,6 +44,7 @@ Route::resource('expenseCategory', 'API\ExpenseCategoryAPIController');
 Route::resource('expense', 'API\ExpenseAPIController');
 Route::resource('user', 'API\UserAPIController');
 Route::resource('client', 'API\CustomerAPIController');
+Route::get('purchases-donwload', 'API\PurchaseAPIController@generateReport');
 Route::resource('purchase', 'API\PurchaseAPIController');
 Route::resource('sale', 'API\SaleAPIController');
 Route::resource('income', 'API\IncomeAPIController');
