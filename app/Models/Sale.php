@@ -46,6 +46,10 @@ class Sale extends Model
         return $this->belongsTo('App\Models\Client');
     }
 
+    public function customer () {
+        return $this->belongsTo(Client::class, 'client_id', 'id')->withTrashed();
+    }
+
     public function facture()
     {
         return $this->hasMany('App\Models\PaymentSale');

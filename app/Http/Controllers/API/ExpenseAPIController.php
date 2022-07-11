@@ -58,23 +58,26 @@ class ExpenseAPIController extends Controller
 
             $insert = [];
             collect($request->expenses)->each(function ($item) use (&$insert) {
-                $insert[] = [
-                    'date' => $item['date'],
-                    'Ref' => !empty($item['ref']) ? $item['ref'] : $this->getNumberOrder(),
-                    'user_id' => $item['userId'],
-                    'expense_category_id' => $item['expenseCategoryId'],
-                    'warehouse_id' => $item['warehouseId'],
-                    'details' => $item['details'],
-                    'amount' => $item['amount'],
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
-                ];
+                $expense = Expense::where('date', $item['date'])->where('Ref', $item['ref'])->first();
+                if (empty($expense)) {
+                    $insert[] = [
+                        'date' => $item['date'],
+                        'Ref' => !empty($item['ref']) ? $item['ref'] : $this->getNumberOrder(),
+                        'user_id' => $item['userId'],
+                        'expense_category_id' => $item['expenseCategoryId'],
+                        'warehouse_id' => $item['warehouseId'],
+                        'details' => $item['details'],
+                        'amount' => $item['amount'],
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ];
+                }
             });
 
-            try {
-                DB::beginTransaction();
+            try {                
+                DB::beginTransaction();                
                 $expense = Expense::insert($insert);
-                DB::commit();
+                DB::commit();                
                 return $this->sendResponse($expense, 'Expense saved successfully');
             } catch (Exception $ex) {
                 DB::rollBack();

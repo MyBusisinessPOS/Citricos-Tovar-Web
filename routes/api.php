@@ -46,6 +46,8 @@ Route::resource('user', 'API\UserAPIController');
 Route::resource('client', 'API\CustomerAPIController');
 Route::get('purchases-donwload', 'API\PurchaseAPIController@generateReport');
 Route::resource('purchase', 'API\PurchaseAPIController');
+Route::get('sales-donwload', 'API\SaleAPIController@generateReport');
+Route::get('utilities-donwload', 'API\SaleAPIController@generateReportUtilities');
 Route::resource('sale', 'API\SaleAPIController');
 Route::resource('income', 'API\IncomeAPIController');
 

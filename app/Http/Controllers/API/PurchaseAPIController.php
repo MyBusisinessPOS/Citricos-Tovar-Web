@@ -68,79 +68,81 @@ class PurchaseAPIController extends Controller
             try {
                 DB::beginTransaction();
                 collect($request->purchases)->each(function ($item) use (&$insert) {
-                    Log::info($item);
+                    
+                    $purchase = Purchase::where('Ref', $item['Ref'])->where('date', $item['date'])->first();
+                    if (empty($purchase)) {
+                        $input['user_id'] = $item['user_id'];
+                        $input['Ref'] = !empty($item['Ref']) ? $item['Ref'] : $this->getNumberOrder();
+                        $input['date'] = $item['date'];
+                        $input['provider_id'] = $item['provider_id'];
+                        $input['warehouse_id'] = $item['warehouse_id'];
+                        $input['tax_rate'] = $item['tax_rate'];
+                        $input['TaxNet'] = $item['TaxNet'];
+                        $input['discount'] = $item['discount'];
+                        $input['shipping'] = $item['shipping'];
+                        $input['GrandTotal'] = $item['GrandTotal'];
+                        $input['paid_amount'] = $item['payment_one'];
+                        $input['statut'] = $item['statut'] ?? 'completed';
+                        $input['payment_statut'] = $item['payment_statut'] ?? 'paid';
+                        $input['notes'] = $item['notes'] ?? null;
+                        $input['created_at'] = Carbon::now();
+                        $input['updated_at'] = Carbon::now();
 
-                    $input['user_id'] = $item['user_id'];
-                    $input['Ref'] = !empty($item['Ref']) ? $item['Ref'] : $this->getNumberOrder();
-                    $input['date'] = $item['date'];
-                    $input['provider_id'] = $item['provider_id'];
-                    $input['warehouse_id'] = $item['warehouse_id'];
-                    $input['tax_rate'] = $item['tax_rate'];
-                    $input['TaxNet'] = $item['TaxNet'];
-                    $input['discount'] = $item['discount'];
-                    $input['shipping'] = $item['shipping'];
-                    $input['GrandTotal'] = $item['GrandTotal'];
-                    $input['paid_amount'] = $item['payment_one'];
-                    $input['statut'] = $item['statut'] ?? 'completed';
-                    $input['payment_statut'] = $item['payment_statut'] ?? 'paid';
-                    $input['notes'] = $item['notes'] ?? null;
-                    $input['created_at'] = Carbon::now();
-                    $input['updated_at'] = Carbon::now();
+                        $purchase = Purchase::create($input);
+                        $insert = [];
+                        collect($item['details'])->each(function ($row) use (&$insert, $purchase) {
+                            $insert[] = [
+                                'cost' => $row['cost'],
+                                'purchase_unit_id' => 1,
+                                'TaxNet' => $row['TaxNet'],
+                                'tax_method' => 1,
+                                'discount' => $row['discount'],
+                                'discount_method' => 2,
+                                'purchase_id' => $purchase->id,
+                                'product_id' => $row['product_id'],
+                                'product_variant_id' => $row['product_variant_id'] ?? null,
+                                'total' => $row['total'],
+                                'quantity' => $row['quantity'],
+                                'box' => $row['box'],
+                                'weight' => $row['weight'],
+                                'created_at' => Carbon::now(),
+                                'updated_at' => Carbon::now(),
+                            ];
 
-                    $purchase = Purchase::create($input);
-                    $insert = [];
-                    collect($item['details'])->each(function ($row) use (&$insert, $purchase) {
-                        $insert[] = [
-                            'cost' => $row['cost'],
-                            'purchase_unit_id' => 1,
-                            'TaxNet' => $row['TaxNet'],
-                            'tax_method' => 1,
-                            'discount' => $row['discount'],
-                            'discount_method' => 2,
-                            'purchase_id' => $purchase->id,
-                            'product_id' => $row['product_id'],
-                            'product_variant_id' => $row['product_variant_id'] ?? null,
-                            'total' => $row['total'],
-                            'quantity' => $row['quantity'],
-                            'box' => $row['box'],
-                            'weight' => $row['weight'],
-                            'created_at' => Carbon::now(),
-                            'updated_at' => Carbon::now(),
-                        ];
+                            
+                            if ($purchase->statut == "received") {
+                                if ($row['product_variant_id'] !== null) {
+                                    $product_warehouse = product_warehouse::where('warehouse_id', $purchase->warehouse_id)
+                                        ->where('product_id', $row['product_id'])
+                                        ->where('product_variant_id', $row['product_variant_id'])
+                                        ->first();
 
-                        
-                        if ($purchase->statut == "received") {
-                            if ($row['product_variant_id'] !== null) {
-                                $product_warehouse = product_warehouse::where('warehouse_id', $purchase->warehouse_id)
-                                    ->where('product_id', $row['product_id'])
-                                    ->where('product_variant_id', $row['product_variant_id'])
-                                    ->first();
-
-                                if ($unit && $product_warehouse) {
-                                    if ($unit->operator == '/') {
-                                        $product_warehouse->qte += $row['quantity'] / $unit->operator_value;
-                                    } else {
-                                        $product_warehouse->qte += $row['quantity'] * $unit->operator_value;
+                                    if ($unit && $product_warehouse) {
+                                        if ($unit->operator == '/') {
+                                            $product_warehouse->qte += $row['quantity'] / $unit->operator_value;
+                                        } else {
+                                            $product_warehouse->qte += $row['quantity'] * $unit->operator_value;
+                                        }
+                                        $product_warehouse->save();
                                     }
-                                    $product_warehouse->save();
-                                }
-                            } else {
-                                $product_warehouse = product_warehouse::where('warehouse_id', $purchase->warehouse_id)
-                                    ->where('product_id', $row['product_id'])
-                                    ->first();
+                                } else {
+                                    $product_warehouse = product_warehouse::where('warehouse_id', $purchase->warehouse_id)
+                                        ->where('product_id', $row['product_id'])
+                                        ->first();
 
-                                if ($unit && $product_warehouse) {
-                                    if ($unit->operator == '/') {
-                                        $product_warehouse->qte += $row['quantity'] / $unit->operator_value;
-                                    } else {
-                                        $product_warehouse->qte += $row['quantity'] * $unit->operator_value;
+                                    if ($unit && $product_warehouse) {
+                                        if ($unit->operator == '/') {
+                                            $product_warehouse->qte += $row['quantity'] / $unit->operator_value;
+                                        } else {
+                                            $product_warehouse->qte += $row['quantity'] * $unit->operator_value;
+                                        }
+                                        $product_warehouse->save();
                                     }
-                                    $product_warehouse->save();
                                 }
                             }
-                        }
-                    });
-                    PurchaseDetail::insert($insert);
+                        });
+                        PurchaseDetail::insert($insert);
+                    }
                 });
 
                 DB::commit();

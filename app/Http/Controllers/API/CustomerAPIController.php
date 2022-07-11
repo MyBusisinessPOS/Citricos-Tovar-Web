@@ -46,7 +46,7 @@ class CustomerAPIController extends Controller
             $insert = [];
             collect($request->clients)->each(function ($item) use (&$insert) {
 
-                $client = Client::where('cliente', $item['cliente'])->first();
+                $client = Client::where('cliente', $item['client'])->first();
                 if (!empty($exists)) {
                     $client->account_number = $item['account_number'];
                     $client->name = $item['name'];

@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Exports\SalesUtilities;
+use App\Exports\SalesWeekly;
+use App\Exports\SaleUtilities;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
+use App\Models\Expense;
 use App\Models\PaymentSale;
 use App\Models\PaymentWithCreditCard;
 use App\Models\Product;
 use App\Models\product_warehouse;
 use App\Models\ProductVariant;
+use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Setting;
@@ -18,8 +23,11 @@ use App\utils\helpers;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SaleAPIController extends Controller
 {
@@ -69,90 +77,94 @@ class SaleAPIController extends Controller
                 DB::beginTransaction();
 
                 collect($request->sales)->each(function ($item) use (&$insert, $helpers) {
-                    $input['user_id'] = $item['user_id'];
-                    $input['date'] = $item['date'];
-                    $input['Ref'] = $item['Ref'];
-                    $input['is_pos'] = 0;
-                    $input['client_id'] = $item['client_id'];
-                    $input['warehouse_id'] = $item['warehouse_id'];
-                    $input['tax_rate'] = $item['tax_rate'];
-                    $input['TaxNet'] = $item['TaxNet'];
-                    $input['discount'] = $item['discount'];
-                    $input['shipping'] = $item['shipping'];
-                    $input['GrandTotal'] = $item['GrandTotal'];
-                    $input['paid_amount'] = $item['payment_one'];
-                    $input['payment_statut'] = $item['payment_statut'] ?? 'paid';
-                    $input['statut'] = $item['statut'] ?? 'completed';
-                    $input['notes'] = $item['notes'] ?? null;
-                    $input['type_sale'] = $item['type_sale'] ?? null;
 
-                    $sale = Sale::create($input);
-                    
-                    collect($item['details'])->each(function ($row) use (&$insert, $sale) {
-                        $insert[] = [
-                            'date' => $row['date'],
-                            'sale_id' => $sale->id,
-                            'product_id' => $row['product_id'],
-                            'product_variant_id' => $row['product_variant_id'] ?? null,
-                            'price' => $row['price'],
-                            'sale_unit_id' => 1,
-                            'TaxNet' => $row['TaxNet'],
-                            'tax_method' => 1,
-                            'discount' => $row['discount'],
-                            'discount_method' => 2,
-                            'total' => $row['total'],
-                            'quantity' => $row['quantity'],
-                            'box' => $row['box'],
-                            'weight' => $row['weight'],
-                            'created_at' => Carbon::now(),
-                            'updated_at' => Carbon::now(),
-                        ];
+                    $sale = Sale::where('date', $item['date'])->where('Ref', $item['Ref'])->first();
+                    if (empty($sale)) {
+                        $input['user_id'] = $item['user_id'];
+                        $input['date'] = $item['date'];
+                        $input['Ref'] = $item['Ref'];
+                        $input['is_pos'] = 0;
+                        $input['client_id'] = $item['client_id'];
+                        $input['warehouse_id'] = $item['warehouse_id'];
+                        $input['tax_rate'] = $item['tax_rate'];
+                        $input['TaxNet'] = $item['TaxNet'];
+                        $input['discount'] = $item['discount'];
+                        $input['shipping'] = $item['shipping'];
+                        $input['GrandTotal'] = $item['GrandTotal'];
+                        $input['paid_amount'] = $item['payment_one'];
+                        $input['payment_statut'] = $item['payment_statut'] ?? 'paid';
+                        $input['statut'] = $item['statut'] ?? 'completed';
+                        $input['notes'] = $item['notes'] ?? null;
+                        $input['type_sale'] = $item['type_sale'] ?? null;
+
+                        $sale = Sale::create($input);
+                        
+                        collect($item['details'])->each(function ($row) use (&$insert, $sale) {
+                            $insert[] = [
+                                'date' => $row['date'],
+                                'sale_id' => $sale->id,
+                                'product_id' => $row['product_id'],
+                                'product_variant_id' => $row['product_variant_id'] ?? null,
+                                'price' => $row['price'],
+                                'sale_unit_id' => 1,
+                                'TaxNet' => $row['TaxNet'],
+                                'tax_method' => 1,
+                                'discount' => $row['discount'],
+                                'discount_method' => 2,
+                                'total' => $row['total'],
+                                'quantity' => $row['quantity'],
+                                'box' => $row['box'],
+                                'weight' => $row['weight'],
+                                'created_at' => Carbon::now(),
+                                'updated_at' => Carbon::now(),
+                            ];
 
 
-                        if ($sale->statut == "completed") {
-                            $unit = Unit::find(1); //
-                            if ($row['product_variant_id'] !== null) {
-                                $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
-                                    ->where('product_id', $row['product_id'])
-                                    ->where('product_variant_id', $row['product_variant_id'])
-                                    ->first();
+                            if ($sale->statut == "completed") {
+                                $unit = Unit::find(1); //
+                                if ($row['product_variant_id'] !== null) {
+                                    $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
+                                        ->where('product_id', $row['product_id'])
+                                        ->where('product_variant_id', $row['product_variant_id'])
+                                        ->first();
 
-                                if ($unit && $product_warehouse) {
-                                    if ($unit->operator == '/') {
-                                        $product_warehouse->qte -= $row['quantity'] / $unit->operator_value;
-                                    } else {
-                                        $product_warehouse->qte -= $row['quantity'] * $unit->operator_value;
+                                    if ($unit && $product_warehouse) {
+                                        if ($unit->operator == '/') {
+                                            $product_warehouse->qte -= $row['quantity'] / $unit->operator_value;
+                                        } else {
+                                            $product_warehouse->qte -= $row['quantity'] * $unit->operator_value;
+                                        }
+                                        $product_warehouse->save();
                                     }
-                                    $product_warehouse->save();
-                                }
-                            } else {
-                                $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
-                                    ->where('product_id', $row['product_id'])
-                                    ->first();
+                                } else {
+                                    $product_warehouse = product_warehouse::where('warehouse_id', $sale->warehouse_id)
+                                        ->where('product_id', $row['product_id'])
+                                        ->first();
 
-                                if ($unit && $product_warehouse) {
-                                    if ($unit->operator == '/') {
-                                        $product_warehouse->qte -= $row['quantity'] / $unit->operator_value;
-                                    } else {
-                                        $product_warehouse->qte -= $row['quantity'] * $unit->operator_value;
+                                    if ($unit && $product_warehouse) {
+                                        if ($unit->operator == '/') {
+                                            $product_warehouse->qte -= $row['quantity'] / $unit->operator_value;
+                                        } else {
+                                            $product_warehouse->qte -= $row['quantity'] * $unit->operator_value;
+                                        }
+                                        $product_warehouse->save();
                                     }
-                                    $product_warehouse->save();
                                 }
                             }
-                        }
-                    });
+                        });
 
-                    //Payment
-                    if ($sale->payment_statut == 'paid') {
-                        PaymentSale::create([
-                            'user_id' =>  $item['user_id'],
-                            'date' => Carbon::now(),
-                            'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
-                            'sale_id' => $sale->id,
-                            'montant' => $item['payment_one'],                            
-                            'change' => 0,
-                            'Reglement' => $item['payment_method_one'],                            
-                        ]);
+                        //Payment
+                        if ($sale->payment_statut == 'paid') {
+                            PaymentSale::create([
+                                'user_id' =>  $item['user_id'],
+                                'date' => Carbon::now(),
+                                'Ref' => app('App\Http\Controllers\PaymentSalesController')->getNumberOrder(),
+                                'sale_id' => $sale->id,
+                                'montant' => $item['payment_one'],                            
+                                'change' => 0,
+                                'Reglement' => $item['payment_method_one'],                            
+                            ]);
+                        }
                     }
                 });
 
@@ -517,6 +529,90 @@ class SaleAPIController extends Controller
             DB::rollBack();
             return $this->sendError($ex->getMessage());
         }
+    }
+
+    public function generateReport (Request $request) {
+
+        $from = isset($request->from) ? $request->from : Carbon::now()->firstOfMonth()->format('Y-m-d');
+        $to = isset($request->to) ? $request->to : Carbon::now()->endOfMonth()->format('Y-m-d'); 
+
+        $sales = Sale::
+        join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
+        ->join('clients', 'sales.client_id', '=', 'clients.id')
+        ->selectRaw('sales.date, clients.name, sale_details.price, sum(sale_details.boxs) as boxs, sum(sale_details.weight) as weight, sum(sale_details.quantity) as quantity')
+        ->whereBetween('sales.date', [$from, $to])
+        ->groupBy('sales.date')
+        ->groupBy('clients.name')
+        ->get();
+
+        $sales = collect($sales)->groupBy('name');
+
+        $totales = Sale::join('sale_details', 'sales.id', '=', 'sale_details.sale_id')
+        ->join('products', 'sale_details.product_id', '=', 'products.id')
+        ->selectRaw('
+            products.name,
+            sum(sale_details.boxs) as boxs,
+            sum(sale_details.weight) as weight,
+            sum(sale_details.weight * sale_details.price) as total')
+        ->whereBetween('sales.date', [$from, $to])
+        ->groupBy('products.name')
+        ->get();
+
+        $customer = [];
+        foreach ($sales as $key => $item) {
+            foreach ($item as $ky => $value) {
+                $customer[$key][$value['date']] = $value;    
+            }
+        }
+
+        $from = Carbon::parse($from)->startOfDay();
+        $to = Carbon::parse($to)->endOfDay();
+
+        $name = "/public/exports/Reporte-Ventas-" . Carbon::parse($from)->format('Y-m-d') . "-" . Carbon::parse($to)->format('Y-m-d') . ".xlsx";   
+        Excel::store(new SalesWeekly($customer, $totales, $from, $to), $name);
+        return [
+            'success' => true,
+            'url' => asset("storage/exports/Reporte-Ventas-" . Carbon::parse($from)->format('Y-m-d') . "-" . Carbon::parse($to)->format('Y-m-d') . ".xlsx"),
+            'message' => 'Sale Report successfully generated',
+        ];    
+    }
+
+    public function generateReportUtilities (Request $request) {
+        $from = isset($request->from) ? $request->from : Carbon::now()->firstOfMonth()->format('Y-m-d');
+        $to = isset($request->to) ? $request->to : Carbon::now()->endOfMonth()->format('Y-m-d'); 
+
+        $purchases = Purchase::whereBetween('date', [$from, $to])->sum('GrandTotal');
+        $expenses = Expense::whereBetween('created_at', [$from, $to])->sum('amount');
+        $sales = Sale::whereBetween('date', [$from, $to])->sum('GrandTotal');
+        
+        $totales = [
+            'purchases' => $purchases,
+            'expenses' => $expenses,
+            'sales' => $sales,
+            'totales' => $purchases + $expenses,
+            'utility' => $sales - ($purchases + $expenses),
+        ];
+
+        $name = "/public/exports/Reporte-Utilidades-" . Carbon::parse($from)->format('Y-m-d') . "-" . Carbon::parse($to)->format('Y-m-d') . ".xlsx";   
+        Excel::store(new SaleUtilities($totales, $from, $to), $name);
+        return [
+            'success' => true,
+            'url' => asset("storage/exports/Reporte-Utilidades-" . Carbon::parse($from)->format('Y-m-d') . "-" . Carbon::parse($to)->format('Y-m-d') . ".xlsx"),
+            'message' => 'Profit Sale Report Generated Successfully',
+        ]; 
+
+    }
+
+    public function transposeData($data): array
+    {
+        $retData = array();
+
+        foreach ($data as $row => $columns) {
+            foreach ($columns as $row2 => $column2) {
+                $retData[$row2][$row] = $column2;
+            }
+        }
+        return $retData;
     }
 
     private function getNumberOrder()
