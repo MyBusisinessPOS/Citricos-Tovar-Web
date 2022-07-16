@@ -14,8 +14,8 @@ class AddColumnsOnSaleDetails extends Migration
     public function up()
     {
         Schema::table('sale_details', function (Blueprint $table) {
-            $table->integer('box')->nullable()->after('quantity');
-            $table->integer('weight')->nullable()->after('box');
+            $table->integer('boxs')->nullable()->after('quantity');
+            $table->integer('weight')->nullable()->after('boxs');
         });
     }
 
