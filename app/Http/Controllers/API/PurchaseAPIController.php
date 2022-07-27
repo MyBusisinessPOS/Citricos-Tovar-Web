@@ -103,7 +103,7 @@ class PurchaseAPIController extends Controller
                                 'product_variant_id' => $row['product_variant_id'] ?? null,
                                 'total' => $row['total'],
                                 'quantity' => $row['quantity'],
-                                'box' => $row['box'],
+                                'boxs' => $row['box'],
                                 'weight' => $row['weight'],
                                 'created_at' => Carbon::now(),
                                 'updated_at' => Carbon::now(),
