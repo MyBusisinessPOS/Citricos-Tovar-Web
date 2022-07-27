@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateExpenseCategoryRequest;
 use App\Http\Requests\UpdateExpenseCategoryRequest;
 use App\Models\ExpenseCategory;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,17 +41,43 @@ class ExpenseCategoryAPIController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(CreateExpenseCategoryRequest $request)
+    public function store(Request $request)
     {
-        DB::beginTransaction();
-        try {
-            $input = $request->all();
-            $expenseCategory = ExpenseCategory::create($input);
-            DB::commit();
-            return $this->sendResponse($expenseCategory, 'Expense categorie saved successfully');
-        } catch (Exception $ex) {
-            DB::rollBack();
-            return $this->sendError($ex->getMessage());
+
+        if (isset($request->expenseCategory)) {
+
+            $insert = [];
+
+            collect($request->expenseCategory)->each(function ($item) use (&$insert){
+                $category = ExpenseCategory::where('name', $item['name'])->first();
+                if (!empty($category)) {
+                    $category->user_id = $item['user_id'];
+                    $category->name = $item['name'];
+                    $category->description = $item['description'];
+                    $category->save();
+                } else {
+                    $insert[] = [
+                        'user_id' => $item['user_id'],
+                        'name' => $item['name'],
+                        'description' => $item['description'],
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ];
+                }
+            });
+
+            try {
+                DB::beginTransaction();
+                $expenseCategory = ExpenseCategory::insert($insert);
+                DB::commit();
+                return $this->sendResponse($expenseCategory, 'Expense categorie saved successfully');
+            } catch (Exception $ex) {
+                DB::rollBack();
+                return $this->sendError($ex->getMessage());
+            }
+
+        } else {
+            return $this->sendError('The expenseCategory attribute does not exist');
         }
     }
 
