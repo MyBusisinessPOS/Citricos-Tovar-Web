@@ -49,6 +49,7 @@ Route::resource('purchase', 'API\PurchaseAPIController');
 Route::get('sales-donwload', 'API\SaleAPIController@generateReport');
 Route::get('utilities-donwload', 'API\SaleAPIController@generateReportUtilities');
 Route::resource('sale', 'API\SaleAPIController');
+Route::resource('incomeCategory', 'API\IncomeCategoryAPIController');
 Route::resource('income', 'API\IncomeAPIController');
 
 
