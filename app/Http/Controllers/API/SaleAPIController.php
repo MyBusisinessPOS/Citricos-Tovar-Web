@@ -113,7 +113,7 @@ class SaleAPIController extends Controller
                                 'discount_method' => 2,
                                 'total' => $row['total'],
                                 'quantity' => $row['quantity'],
-                                'box' => $row['box'],
+                                'boxs' => $row['box'],
                                 'weight' => $row['weight'],
                                 'created_at' => Carbon::now(),
                                 'updated_at' => Carbon::now(),
